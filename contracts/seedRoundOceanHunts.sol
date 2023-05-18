@@ -20,11 +20,11 @@ interface Aggregator {
 }
 
 contract SeedRound is ReentrancyGuard, Ownable, Pausable {
-    uint256 public totalTokensSoldSRK;
+    uint256 public totalTokensSoldOCN;
     uint256 public totalTokensSoldHH;
     uint256 public claimStartTime;
 
-    address public SRKToken;
+    address public OCNToken;
     address public HHToken;
 
     bool public claimStarted;
@@ -34,29 +34,29 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
     IERC20 public USDCInterface;
     Aggregator public aggregatorInterface;
 
-    uint256 public SRK_price;
+    uint256 public OCN_price;
     uint256 public HH_price;
 
-    mapping(address => uint256) public userDepositsSRK;
+    mapping(address => uint256) public userDepositsOCN;
     mapping(address => uint256) public userDepositsHH;
 
-    mapping(address => uint256) public userLastClaimSRK;
+    mapping(address => uint256) public userLastClaimOCN;
     mapping(address => uint256) public userLastClaimHH;
 
-    uint256 constant public maxTotalSRKTokensSold = 200000000;
+    uint256 constant public maxTotalOCNTokensSold = 200000000;
     uint256 constant public minLimitUsdToBuy = 10;
     uint256 constant public maxLimitUsdToBuy = 5000;
 
     uint256 public constant VESTING_INTERVAL = 60 days;
-    uint256 public constant CLIFF_DURATION_SRK = 6 * 30 days; // + 2 months vesting = 8 months
-    uint256 public constant VESTING_DURATION_SRK = 28 * 30 days; // 28 months
+    uint256 public constant CLIFF_DURATION_OCN = 6 * 30 days; // + 2 months vesting = 8 months
+    uint256 public constant VESTING_DURATION_OCN = 28 * 30 days; // 28 months
 
     uint256 public constant CLIFF_DURATION_HH = 10 * 30 days; // + 2 months vesting = 12 months
     uint256 public constant VESTING_DURATION_HH = 60 * 30 days; // 60 months
 
-    event TokensBought(address indexed user, uint256 indexed tokensBoughtSRK, uint256 indexed tokensBoughtHH, uint256 amountPaid, uint256 usdEq, uint256 timestamp);
-    event TokensAdded(uint256 indexed SRKnoOfTokens, uint256 indexed HHnoOfTokens, address _SRKToken, address _HHToken, uint256 timestamp);
-    event TokensClaimedSRK(address indexed user, uint256 amount, uint256 timestamp);
+    event TokensBought(address indexed user, uint256 indexed tokensBoughtOCN, uint256 indexed tokensBoughtHH, uint256 amountPaid, uint256 usdEq, uint256 timestamp);
+    event TokensAdded(uint256 indexed OCNnoOfTokens, uint256 indexed HHnoOfTokens, address _OCNToken, address _HHToken, uint256 timestamp);
+    event TokensClaimedOCN(address indexed user, uint256 amount, uint256 timestamp);
     event TokensClaimedHH(address indexed user, uint256 amount, uint256 timestamp);
 
     /**
@@ -67,7 +67,7 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
     constructor(address _usdt, address _usdc) {
         require(_usdt != address(0), "Zero USDT address");
         require(_usdc != address(0), "Zero USDC address");
-        SRK_price = 2500000000000000;   // 0.0025 USD
+        OCN_price = 2500000000000000;   // 0.0025 USD
         HH_price = 250000000000000000;   // 0.25 USD
         aggregatorInterface = Aggregator(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e); // Oracle contract to fetch ETH/USDT price test net
         USDTInterface = IERC20(_usdt);
@@ -75,15 +75,15 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
-     * @dev Calculate the amount of SRK and HH tokens for a given amount of USD.
+     * @dev Calculate the amount of OCN and HH tokens for a given amount of USD.
      * @param usdAmount Amount of USDT to spend on tokens
      */
-    function calculateTokensAmount(uint256 usdAmount) public view returns (uint256 srkAmount, uint256 hhAmount) {
-        uint256 totalSRKValue = usdAmount / 8;
+    function calculateTokensAmount(uint256 usdAmount) public view returns (uint256 ocnAmount, uint256 hhAmount) {
+        uint256 totalOCNValue = usdAmount / 8;
         uint256 totalHHValue = (usdAmount * 7) / 8;
-        srkAmount = totalSRKValue / SRK_price;
+        ocnAmount = totalOCNValue / OCN_price;
         hhAmount = totalHHValue / HH_price;
-        require(srkAmount + totalTokensSoldSRK <= maxTotalSRKTokensSold, "Reached the limit of tokens to be sold");
+        require(ocnAmount + totalTokensSoldOCN <= maxTotalOCNTokensSold, "Reached the limit of tokens to be sold");
     }
 
     /**
@@ -124,7 +124,7 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
      * @param usdAmount The amount of USDT the user wants to spend to buy tokens
      */
     function buyWithUSDT(uint256 usdAmount) external checkSaleState(usdAmount) whenNotPaused returns (bool) {
-        (uint256 srkAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount*(10**baseDecimals()));
+        (uint256 ocnAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount*(10**baseDecimals()));
         uint256 ourAllowance = USDTInterface.allowance(
             _msgSender(),
             address(this)
@@ -141,14 +141,14 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
         );
         require(success, "Token payment failed");
 
-        totalTokensSoldSRK += srkAmount;
+        totalTokensSoldOCN += ocnAmount;
         totalTokensSoldHH += hhAmount;
 
-        userDepositsSRK[_msgSender()] += srkAmount * (10**baseDecimals());
+        userDepositsOCN[_msgSender()] += ocnAmount * (10**baseDecimals());
         userDepositsHH[_msgSender()] += hhAmount * (10**baseDecimals());
         emit TokensBought(
             _msgSender(),
-            srkAmount,
+            ocnAmount,
             hhAmount,
             usdAmount,
             usdAmount,
@@ -162,7 +162,7 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
      * @param usdAmount The amount of USDC the user wants to spend to buy tokens
      */
     function buyWithUSDC(uint256 usdAmount) external checkSaleState(usdAmount) whenNotPaused returns (bool) {
-        (uint256 srkAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount*(10**baseDecimals()));
+        (uint256 ocnAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount*(10**baseDecimals()));
         uint256 ourAllowance = USDCInterface.allowance(
             _msgSender(),
             address(this)
@@ -178,13 +178,13 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
         );
         require(success, "Token payment failed");
 
-        totalTokensSoldSRK += srkAmount;
+        totalTokensSoldOCN += ocnAmount;
         totalTokensSoldHH += hhAmount;
-        userDepositsSRK[_msgSender()] += srkAmount * (10**baseDecimals());
+        userDepositsOCN[_msgSender()] += ocnAmount * (10**baseDecimals());
         userDepositsHH[_msgSender()] += hhAmount * (10**baseDecimals());
         emit TokensBought(
             _msgSender(),
-            srkAmount,
+            ocnAmount,
             hhAmount,
             usdAmount,
             usdAmount,
@@ -200,20 +200,20 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
     function buyWithEth(uint256 ethAmount) external payable checkSaleState(ethAmount * getLatestEthPrice() / (10**18))
         whenNotPaused nonReentrant returns (bool){
         uint256 usdAmount = ethAmount * getLatestEthPrice();
-        (uint256 srkAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount);
+        (uint256 ocnAmount, uint256 hhAmount) = calculateTokensAmount(usdAmount);
         require(msg.value >= ethAmount, "Less payment");
         uint256 excess = msg.value - ethAmount;
 
-        totalTokensSoldSRK += srkAmount;
+        totalTokensSoldOCN += ocnAmount;
         totalTokensSoldHH += hhAmount;
-        userDepositsSRK[_msgSender()] += srkAmount * (10**baseDecimals());
+        userDepositsOCN[_msgSender()] += ocnAmount * (10**baseDecimals());
         userDepositsHH[_msgSender()] += hhAmount * (10**baseDecimals());
 
         sendValue(payable(owner()), ethAmount);
         if (excess > 0) sendValue(payable(_msgSender()), excess);
         emit TokensBought(
             _msgSender(),
-            srkAmount,
+            ocnAmount,
             hhAmount,
             ethAmount,
             usdAmount,
@@ -230,29 +230,29 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
-     * @dev To set the SRK and HH token addresses and transfer tokens for claiming by the owner
-     * @param SRKnoOfTokens number of SRK tokens to add to the contract
+     * @dev To set the OCN and HH token addresses and transfer tokens for claiming by the owner
+     * @param OCNnoOfTokens number of OCN tokens to add to the contract
      * @param HHnoOfTokens number of HH tokens to add to the contract
-     * @param _SRKToken SRK token address
+     * @param _OCNToken OCN token address
      * @param _HHToken HH token address
      */
-    function startClaim(uint256 SRKnoOfTokens, uint256 HHnoOfTokens, address _SRKToken, address _HHToken)
+    function startClaim(uint256 OCNnoOfTokens, uint256 HHnoOfTokens, address _OCNToken, address _HHToken)
         external onlyOwner returns (bool) {
         require(
-            SRKnoOfTokens >= (totalTokensSoldSRK * (10**baseDecimals())) &&
+            OCNnoOfTokens >= (totalTokensSoldOCN * (10**baseDecimals())) &&
             HHnoOfTokens >= (totalTokensSoldHH * (10**baseDecimals())),
             "Tokens less than sold"
         );
-        require(_SRKToken != address(0), "SRK zero token address");
+        require(_OCNToken != address(0), "OCN zero token address");
         require(_HHToken != address(0), "HH Zero token address");
         require(!claimStarted, "Claim already set");
 
-        bool SRKtransfer = IERC20(_SRKToken).transferFrom(
+        bool OCNtransfer = IERC20(_OCNToken).transferFrom(
             _msgSender(),
             address(this),
-            SRKnoOfTokens
+            OCNnoOfTokens
         );
-        require(SRKtransfer, "SRK transfer failed");
+        require(OCNtransfer, "OCN transfer failed");
         bool HHtransfer = IERC20(_HHToken).transferFrom(
             _msgSender(),
             address(this),
@@ -260,59 +260,59 @@ contract SeedRound is ReentrancyGuard, Ownable, Pausable {
         );
         require(HHtransfer, "HH transfer failed");
 
-        SRKToken = _SRKToken;
+        OCNToken = _OCNToken;
         HHToken = _HHToken;
 
         claimStarted = true;
         claimStartTime = block.timestamp;
 
-        emit TokensAdded(SRKnoOfTokens, HHnoOfTokens, _SRKToken, _HHToken, block.timestamp);
+        emit TokensAdded(OCNnoOfTokens, HHnoOfTokens, _OCNToken, _HHToken, block.timestamp);
         return true;
     }
 
     /**
-     * @dev To claim SRK tokens after claiming starts
+     * @dev To claim OCN tokens after claiming starts
      */
-    function claimSRK() external nonReentrant whenNotPaused returns (bool) {
-        require(SRKToken != address(0), "SRK token not added");
+    function claimOCN() external nonReentrant whenNotPaused returns (bool) {
+        require(OCNToken != address(0), "OCN token not added");
         require(claimStarted, "Claim has not started yet");
 
-        uint256 amount = userDepositsSRK[_msgSender()];
+        uint256 amount = userDepositsOCN[_msgSender()];
         require(amount > 0, "Nothing to claim");
 
         uint256 elapsedTimeSinceStart = block.timestamp - claimStartTime;
-        require(elapsedTimeSinceStart >= CLIFF_DURATION_SRK, "Vesting cliff not reached");
+        require(elapsedTimeSinceStart >= CLIFF_DURATION_OCN, "Vesting cliff not reached");
 
         uint256 claimable;
 
-        if (elapsedTimeSinceStart >= CLIFF_DURATION_SRK + VESTING_DURATION_SRK) {
+        if (elapsedTimeSinceStart >= CLIFF_DURATION_OCN + VESTING_DURATION_OCN) {
             claimable = amount;
         } else {
-            elapsedTimeSinceStart = elapsedTimeSinceStart - CLIFF_DURATION_SRK;
+            elapsedTimeSinceStart = elapsedTimeSinceStart - CLIFF_DURATION_OCN;
             uint256 intervalsSinceStart = elapsedTimeSinceStart / VESTING_INTERVAL;
             uint256 elapsedTimeSinceLastClaim;
             uint256 intervalsSinceLastClaim;
-            uint256 totalIntervals = VESTING_DURATION_SRK / VESTING_INTERVAL;
+            uint256 totalIntervals = VESTING_DURATION_OCN / VESTING_INTERVAL;
 
-            if(userLastClaimSRK[_msgSender()] == 0){
+            if(userLastClaimOCN[_msgSender()] == 0){
                 elapsedTimeSinceLastClaim = block.timestamp - claimStartTime;
             }
             else{
-                elapsedTimeSinceLastClaim = block.timestamp - userLastClaimSRK[_msgSender()];
+                elapsedTimeSinceLastClaim = block.timestamp - userLastClaimOCN[_msgSender()];
                 intervalsSinceLastClaim = elapsedTimeSinceLastClaim / VESTING_INTERVAL;
             }
             claimable = (amount * (intervalsSinceStart - intervalsSinceLastClaim)) / totalIntervals;
         }
         require(claimable > 0 , "No tokens to claim");
 
-        userDepositsSRK[_msgSender()] = amount - claimable;
-        userLastClaimSRK[_msgSender()] = block.timestamp;
+        userDepositsOCN[_msgSender()] = amount - claimable;
+        userLastClaimOCN[_msgSender()] = block.timestamp;
 
         if (claimable > 0) {
-            bool successSRK = IERC20(SRKToken).transfer(_msgSender(), claimable);
-            require(successSRK, "SRK Token transfer failed");
+            bool successOCN = IERC20(OCNToken).transfer(_msgSender(), claimable);
+            require(successOCN, "OCN Token transfer failed");
         }
-        emit TokensClaimedSRK(_msgSender(), claimable, block.timestamp);
+        emit TokensClaimedOCN(_msgSender(), claimable, block.timestamp);
         return true;
     }
 

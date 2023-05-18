@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract OceanOfHunts is ERC20, Pausable, Ownable {
-    constructor() ERC20("Ocean Of Hunts", "SRK") {
+    constructor() ERC20("Ocean Of Hunts", "OCN") {
         _mint(msg.sender, 1_000_000_000 * 10 ** decimals());
     }
 
