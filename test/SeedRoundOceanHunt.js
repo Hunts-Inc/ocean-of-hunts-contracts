@@ -111,7 +111,7 @@ describe("SeedRoundOceanHunt", function () {
         it("should buy tokens with ETH", async () => {
             const tokenValue = ethers.utils.parseEther("0.05");
             await seedRound.connect(userAccount).buyWithEth(tokenValue, {value: tokenValue});
-            const usdtValue = tokenValue.mul(ethers.BigNumber.from(currentEthPrice).div(10 ** 8)); //
+            const usdtValue = tokenValue.mul(ethers.BigNumber.from(currentEthPrice).div(10 ** 8));
             const userDepositExpect = usdtValue.div(8).div(ocnPrice);
             expect(await seedRound.connect(userAccount).totalTokensSoldOCN()).to.equal(userDepositExpect);
             expect(await seedRound.connect(userAccount).userDepositsOCN(userAccount.address)).to.equal(ethers.utils.parseEther(userDepositExpect.toString()));
